@@ -1,5 +1,6 @@
 // src/components/ProfilePhotoUpload.jsx
 import { useState, useRef } from "react";
+import PropTypes from "prop-types";
 import Cropper from "react-easy-crop";
 import getCroppedImg from "../utils/cropImage";
 import toast from "react-hot-toast";
@@ -85,7 +86,7 @@ const ProfilePhotoUpload = ({ currentPhotoUrl, onUploadComplete }) => {
       <div className="flex flex-col items-center gap-3">
         <div 
           onClick={() => !isUploading && fileInputRef.current.click()}
-          className="relative w-28 h-28 rounded-full border-4 border-[#eff1ec] hover:border-[#556b2f] bg-gray-50 flex items-center justify-center cursor-pointer overflow-hidden transition-all group shadow-sm"
+          className="relative w-28 h-28 rounded-full border-4 border-[#eff1ec] hover:border-[#4338ca] bg-gray-50 flex items-center justify-center cursor-pointer overflow-hidden transition-all group shadow-sm"
         >
           {currentPhotoUrl ? (
             <img src={currentPhotoUrl} alt="Profile" className="w-full h-full object-cover" />
@@ -117,7 +118,7 @@ const ProfilePhotoUpload = ({ currentPhotoUrl, onUploadComplete }) => {
           <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
             
             <div className="text-center mb-6">
-              <h3 className="text-xl font-extrabold text-[#556b2f] tracking-tight">Frame Your Photo</h3>
+              <h3 className="text-xl font-extrabold text-[#4338ca] tracking-tight">Frame Your Photo</h3>
               <p className="text-xs text-gray-500 font-medium uppercase tracking-widest mt-1">Drag to reposition</p>
             </div>
 
@@ -147,7 +148,7 @@ const ProfilePhotoUpload = ({ currentPhotoUrl, onUploadComplete }) => {
                 step={0.1}
                 aria-labelledby="Zoom"
                 onChange={(e) => setZoom(e.target.value)}
-                className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#556b2f]"
+                className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#4338ca]"
               />
             </div>
 
@@ -161,7 +162,7 @@ const ProfilePhotoUpload = ({ currentPhotoUrl, onUploadComplete }) => {
               </button>
               <button 
                 onClick={handleCropSave}
-                className="flex-1 py-3 bg-[#556b2f] hover:bg-[#3e4f22] text-white rounded-xl font-bold shadow-lg shadow-[#556b2f]/20 transition-all text-sm transform active:scale-95"
+                className="flex-1 py-3 bg-[#4338ca] hover:bg-[#3730a3] text-white rounded-xl font-bold shadow-lg shadow-[#4338ca]/20 transition-all text-sm transform active:scale-95"
               >
                 Save Photo
               </button>
@@ -171,6 +172,11 @@ const ProfilePhotoUpload = ({ currentPhotoUrl, onUploadComplete }) => {
       )}
     </>
   );
+};
+
+ProfilePhotoUpload.propTypes = {
+  currentPhotoUrl: PropTypes.string,
+  onUploadComplete: PropTypes.func.isRequired,
 };
 
 export default ProfilePhotoUpload;

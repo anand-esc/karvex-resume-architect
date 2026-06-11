@@ -57,12 +57,12 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#fcfcfb] p-4 font-sans text-gray-800">
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 font-sans text-gray-800">
       <div className="w-full max-w-2xl bg-white p-8 md:p-12 rounded-3xl shadow-2xl border border-[#eff1ec]">
         
         {/* Header Section */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-extrabold text-[#556b2f] tracking-tight mb-2">Build Your Master Profile</h1>
+          <h1 className="text-3xl font-extrabold text-[#4338ca] tracking-tight mb-2">Build Your Master Profile</h1>
           <p className="text-gray-500 text-sm">KARVEX uses this data to auto-generate your Super CVs. Fill it once, use it forever.</p>
         </div>
 
@@ -83,7 +83,7 @@ const Onboarding = () => {
               name="fullName"
               value={formData.fullName}
               onChange={handleChange}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#556b2f]/10 focus:border-[#556b2f] outline-none transition-all text-sm"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4338ca]/10 focus:border-[#4338ca] outline-none transition-all text-sm"
               placeholder="e.g. Alex Rivera"
               required
             />
@@ -96,7 +96,7 @@ const Onboarding = () => {
               name="title"
               value={formData.title}
               onChange={handleChange}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#556b2f]/10 focus:border-[#556b2f] outline-none transition-all text-sm"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4338ca]/10 focus:border-[#4338ca] outline-none transition-all text-sm"
               placeholder="e.g. Full Stack Developer"
               required
             />
@@ -109,7 +109,7 @@ const Onboarding = () => {
               name="skills"
               value={formData.skills}
               onChange={handleChange}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#556b2f]/10 focus:border-[#556b2f] outline-none transition-all text-sm h-24"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4338ca]/10 focus:border-[#4338ca] outline-none transition-all text-sm h-24"
               placeholder="e.g. React, Node.js, Python, Machine Learning"
               required
             />
@@ -122,7 +122,7 @@ const Onboarding = () => {
               name="experience"
               value={formData.experience}
               onChange={handleChange}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#556b2f]/10 focus:border-[#556b2f] outline-none transition-all text-sm h-32"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4338ca]/10 focus:border-[#4338ca] outline-none transition-all text-sm h-32"
               placeholder="Briefly describe your experience..."
             />
           </div>
@@ -131,7 +131,7 @@ const Onboarding = () => {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-4 mt-4 bg-[#556b2f] text-white font-bold rounded-xl transform transition-all active:scale-95 shadow-lg shadow-[#556b2f]/20 flex items-center justify-center ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-[#3e4f22]'}`}
+            className={`w-full py-4 mt-4 bg-[#4338ca] text-white font-bold rounded-xl transform transition-all active:scale-95 shadow-lg shadow-[#4338ca]/20 flex items-center justify-center ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-[#3730a3]'}`}
           >
             {loading ? "Saving..." : "Save & Continue to Dashboard"}
           </button>

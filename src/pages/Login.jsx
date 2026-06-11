@@ -1,6 +1,7 @@
 // src/pages/Login.jsx
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '../firebase'; 
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { 
@@ -19,7 +20,14 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [user, authLoading] = useAuthState(auth);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/home');
+    }
+  }, [user, authLoading, navigate]);
 
   // Helper to ensure social logins get a Firestore profile document
   const ensureUserProfile = async (user, additionalData = {}) => {
@@ -87,11 +95,11 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#fcfcfb] p-4 font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 font-sans">
       <div className="flex flex-col md:flex-row w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#eff1ec]">
         
         {/* Branding Side */}
-        <div className="md:w-1/2 bg-[#556b2f] p-12 flex flex-col justify-center text-white relative">
+        <div className="md:w-1/2 bg-[#4338ca] p-12 flex flex-col justify-center text-white relative">
           <div className="relative z-10">
             <h1 className="text-4xl font-extrabold tracking-tighter mb-2">KARVEX</h1>
             <p className="text-sm opacity-80 font-medium tracking-wide uppercase">Editorial Resume Core</p>
@@ -107,7 +115,7 @@ const Login = () => {
         {/* Form Side */}
         <div className="md:w-1/2 p-8 md:p-12 flex flex-col justify-center bg-white">
           <div className="max-w-sm mx-auto w-full">
-            <h2 className="text-3xl font-extrabold text-[#556b2f] tracking-tight mb-2">
+            <h2 className="text-3xl font-extrabold text-[#4338ca] tracking-tight mb-2">
               {isLogin ? 'Welcome Back' : 'Get Started'}
             </h2>
             <p className="text-gray-500 mb-8 text-sm">
@@ -145,7 +153,7 @@ const Login = () => {
                   <label className="block text-[10px] font-bold uppercase text-gray-400 tracking-wider">Full Name</label>
                   <input 
                     type="text" 
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#556b2f]/20 focus:border-[#556b2f] outline-none transition-all text-sm"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4338ca]/20 focus:border-[#4338ca] outline-none transition-all text-sm"
                     placeholder="e.g. Alex Rivera"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
@@ -158,7 +166,7 @@ const Login = () => {
                 <label className="block text-[10px] font-bold uppercase text-gray-400 tracking-wider">Email Address</label>
                 <input 
                   type="email" 
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#556b2f]/20 focus:border-[#556b2f] outline-none transition-all text-sm"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4338ca]/20 focus:border-[#4338ca] outline-none transition-all text-sm"
                   placeholder="name@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -169,11 +177,11 @@ const Login = () => {
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
                   <label className="block text-[10px] font-bold uppercase text-gray-400 tracking-wider">Password</label>
-                  {isLogin && <button type="button" className="text-[10px] font-bold text-[#556b2f] hover:underline uppercase tracking-wider">Forgot?</button>}
+                  {isLogin && <button type="button" className="text-[10px] font-bold text-[#4338ca] hover:underline uppercase tracking-wider">Forgot?</button>}
                 </div>
                 <input 
                   type="password" 
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#556b2f]/20 focus:border-[#556b2f] outline-none transition-all text-sm"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4338ca]/20 focus:border-[#4338ca] outline-none transition-all text-sm"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -184,7 +192,7 @@ const Login = () => {
               <button 
                 type="submit" 
                 disabled={loading}
-                className={`w-full py-4 bg-[#556b2f] text-white font-bold rounded-xl transform transition-all active:scale-95 shadow-lg shadow-[#556b2f]/20 flex items-center justify-center ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-[#3e4f22]'}`}
+                className={`w-full py-4 bg-[#4338ca] text-white font-bold rounded-xl transform transition-all active:scale-95 shadow-lg shadow-[#4338ca]/20 flex items-center justify-center ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-[#3730a3]'}`}
               >
                 {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
               </button>
@@ -195,7 +203,7 @@ const Login = () => {
                 {isLogin ? "New to Karvex?" : "Already have an account?"} {' '}
                 <button 
                   onClick={() => setIsLogin(!isLogin)}
-                  className="text-[#556b2f] font-bold hover:underline"
+                  className="text-[#4338ca] font-bold hover:underline"
                 >
                   {isLogin ? 'Join the Core' : 'Log In Instead'}
                 </button>

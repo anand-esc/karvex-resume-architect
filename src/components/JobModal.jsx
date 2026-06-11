@@ -1,26 +1,31 @@
 // src/components/JobModal.jsx
-import React, { useState } from 'react';
+import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { z } from 'zod';
+import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
-// ✅ FIX 1: Using Vite Environment Variable securely
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+const getModel = () => new ChatGoogleGenerativeAI({
+  modelName: "gemini-2.5-flash",
+  apiKey: import.meta.env.VITE_GEMINI_API_KEY,
+});
 
 const JobModal = ({ isOpen, onClose, onSubmit, templateName }) => {
   const navigate = useNavigate();
   const [step, setStep] = useState('input');
-  const [jobData, setJobData] = useState({ role: '', company: '', description: '' });
+  const [jobData, setJobData] = useState({ role: '', company: '', description: '', image: null });
   const [analysis, setAnalysis] = useState({ score: 0, missingKeywords: [], reasoning: '' });
 
   if (!isOpen) return null;
 
   const handleAnalyze = async (e) => {
     e.preventDefault();
-    if (!jobData.description || !jobData.role) {
-      toast.error("Role and Description are required.");
+    if ((!jobData.description && !jobData.image) || !jobData.role) {
+      toast.error("Role and either a Description text or Screenshot are required.");
       return;
     }
 
@@ -38,34 +43,39 @@ const JobModal = ({ isOpen, onClose, onSubmit, templateName }) => {
       const userExp = profile?.experience ? profile.experience.map(exp => exp.description || '').join(' ') : "";
       const userProj = profile?.projects ? profile.projects.map(p => p.description || '').join(' ') : "";
 
-      // ✅ FIX 2: Updated to the current stable model to prevent 404 errors
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const model = getModel();
 
-      const prompt = `
-        You are a strict Applicant Tracking System (ATS) for recruiters.
-        
-        Job Role: "${jobData.role}"
-        Job Description: "${jobData.description}"
-        
-        Candidate Skills: "${userSkills}"
-        Candidate Experience & Projects: "${userExp} ${userProj}"
+      const outputSchema = z.object({
+        score: z.number().describe("ATS match score between 0 and 100"),
+        missingKeywords: z.array(z.string()).describe("List of missing hard skills, tools, or critical keywords"),
+        reasoning: z.string().describe("A short 1-sentence explanation of why they got this score.")
+      });
 
-        Analyze how well the candidate matches the job description. Find the missing hard skills, tools, or critical keywords.
-        
-        RETURN STRICTLY THIS JSON FORMAT AND NOTHING ELSE. DO NOT USE MARKDOWN TICKS:
-        {
-          "score": 85,
-          "missingKeywords": ["keyword1", "keyword2"],
-          "reasoning": "A short 1-sentence explanation of why they got this score."
-        }
-      `;
+      const structuredLlm = model.withStructuredOutput(outputSchema);
 
-      const result = await model.generateContent(prompt);
-      
-      let rawText = result.response.text();
-      rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-      
-      const aiResponse = JSON.parse(rawText);
+      let jdContent = [];
+      if (jobData.image) {
+        jdContent = [
+          { type: "text", text: `Job Role: "${jobData.role}"\nHere is an image of the Job Description:` },
+          { type: "image_url", image_url: { url: jobData.image } }
+        ];
+      } else {
+        jdContent = [
+          { type: "text", text: `Job Role: "${jobData.role}"\nJob Description: "${jobData.description}"` }
+        ];
+      }
+
+      const messages = [
+        new SystemMessage(`You are a strict Applicant Tracking System (ATS) for recruiters.
+        
+Candidate Skills: "${userSkills}"
+Candidate Experience & Projects: "${userExp} ${userProj}"
+
+Analyze how well the candidate matches the job description. Find the missing hard skills, tools, or critical keywords.`),
+        new HumanMessage({ content: jdContent })
+      ];
+
+      const aiResponse = await structuredLlm.invoke(messages);
       
       setAnalysis(aiResponse);
       setStep('results');
@@ -80,8 +90,19 @@ const JobModal = ({ isOpen, onClose, onSubmit, templateName }) => {
 
   const resetModal = () => {
     setStep('input');
-    setJobData({ role: '', company: '', description: '' });
+    setJobData({ role: '', company: '', description: '', image: null });
     onClose();
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setJobData({ ...jobData, image: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const radius = 40;
@@ -90,7 +111,7 @@ const JobModal = ({ isOpen, onClose, onSubmit, templateName }) => {
   const strokeDashoffset = circumference - (safeScore / 100) * circumference;
   
   const getScoreColor = (score) => {
-    if (score >= 80) return "text-emerald-500";
+    if (score >= 80) return "text-sky-500";
     if (score >= 60) return "text-yellow-500";
     return "text-rose-500";
   };
@@ -101,7 +122,7 @@ const JobModal = ({ isOpen, onClose, onSubmit, templateName }) => {
         
         <div className="px-8 py-6 border-b border-[#eff1ec] flex justify-between items-center bg-gray-50/50">
           <div>
-            <h3 className="text-xl font-extrabold text-[#556b2f] tracking-tight">Target Role Configuration</h3>
+            <h3 className="text-xl font-extrabold text-[#4338ca] tracking-tight">Target Role Configuration</h3>
             <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Layout: {templateName}</p>
           </div>
           <button onClick={resetModal} className="text-gray-400 hover:text-red-500 transition-colors p-2 bg-white rounded-full border border-gray-200 shadow-sm">
@@ -116,16 +137,45 @@ const JobModal = ({ isOpen, onClose, onSubmit, templateName }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-gray-400 tracking-wider mb-2">Target Role</label>
-                  <input type="text" value={jobData.role} onChange={(e) => setJobData({...jobData, role: e.target.value})} placeholder="e.g. Frontend Dev" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#556b2f]/20 focus:border-[#556b2f] outline-none text-sm font-medium transition-all" required />
+                  <input type="text" value={jobData.role} onChange={(e) => setJobData({...jobData, role: e.target.value})} placeholder="e.g. Frontend Dev" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4338ca]/20 focus:border-[#4338ca] outline-none text-sm font-medium transition-all" required />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-gray-400 tracking-wider mb-2">Company</label>
-                  <input type="text" value={jobData.company} onChange={(e) => setJobData({...jobData, company: e.target.value})} placeholder="e.g. Google" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#556b2f]/20 focus:border-[#556b2f] outline-none text-sm font-medium transition-all" required />
+                  <input type="text" value={jobData.company} onChange={(e) => setJobData({...jobData, company: e.target.value})} placeholder="e.g. Google" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4338ca]/20 focus:border-[#4338ca] outline-none text-sm font-medium transition-all" required />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] font-bold uppercase text-gray-400 tracking-wider mb-2">Job Description (JD)</label>
-                <textarea value={jobData.description} onChange={(e) => setJobData({...jobData, description: e.target.value})} placeholder="Paste the full job description here. Our AI will analyze the keywords..." rows="6" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#556b2f]/20 focus:border-[#556b2f] outline-none text-sm font-medium resize-none transition-all" required />
+                <textarea 
+                  value={jobData.description} 
+                  onChange={(e) => setJobData({...jobData, description: e.target.value})} 
+                  placeholder={jobData.image ? "Screenshot uploaded. You can add extra text here or leave blank." : "Paste the full job description here. Our AI will analyze the keywords..."}
+                  rows="4" 
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4338ca]/20 focus:border-[#4338ca] outline-none text-sm font-medium resize-none transition-all mb-2" 
+                  required={!jobData.image} 
+                />
+                
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleImageUpload} 
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      id="jd-image-upload"
+                    />
+                    <button type="button" className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg border border-gray-300 transition-colors flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      Upload JD Screenshot
+                    </button>
+                  </div>
+                  {jobData.image && (
+                    <span className="text-xs text-sky-600 font-bold flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      Image Attached
+                    </span>
+                  )}
+                </div>
               </div>
             </form>
           )}
@@ -134,8 +184,8 @@ const JobModal = ({ isOpen, onClose, onSubmit, templateName }) => {
             <div className="py-12 flex flex-col items-center justify-center text-center">
               <div className="relative w-24 h-24 mb-6">
                 <div className="absolute inset-0 border-4 border-gray-100 rounded-full"></div>
-                <div className="absolute inset-0 border-4 border-[#556b2f] rounded-full border-t-transparent animate-spin"></div>
-                <div className="absolute inset-0 flex items-center justify-center text-[#556b2f]">
+                <div className="absolute inset-0 border-4 border-[#4338ca] rounded-full border-t-transparent animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center text-[#4338ca]">
                   <svg className="w-8 h-8 animate-pulse" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
                 </div>
               </div>
@@ -165,7 +215,7 @@ const JobModal = ({ isOpen, onClose, onSubmit, templateName }) => {
                 </div>
               </div>
 
-              <p className="text-sm text-gray-600 font-medium mb-6 px-4">"{analysis.reasoning}"</p>
+              <p className="text-sm text-gray-600 font-medium mb-6 px-4">“{analysis.reasoning}”</p>
 
               {analysis.missingKeywords && analysis.missingKeywords.length > 0 ? (
                 <div className="w-full bg-rose-50 border border-rose-100 p-4 rounded-2xl mb-2 text-left">
@@ -182,9 +232,9 @@ const JobModal = ({ isOpen, onClose, onSubmit, templateName }) => {
                   </div>
                 </div>
               ) : (
-                <div className="w-full bg-emerald-50 border border-emerald-100 p-4 rounded-2xl mb-2 flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                  <span className="text-sm font-bold text-emerald-700">Perfect keyword alignment!</span>
+                <div className="w-full bg-sky-50 border border-sky-100 p-4 rounded-2xl mb-2 flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 text-sky-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                  <span className="text-sm font-bold text-sky-700">Perfect keyword alignment!</span>
                 </div>
               )}
             </div>
@@ -194,7 +244,7 @@ const JobModal = ({ isOpen, onClose, onSubmit, templateName }) => {
 
         <div className="p-6 border-t border-[#eff1ec] bg-gray-50/50">
           {step === 'input' && (
-            <button form="job-form" type="submit" className="w-full py-3.5 bg-[#556b2f] text-white rounded-xl font-bold shadow-lg shadow-[#556b2f]/20 hover:bg-[#3e4f22] transition-all flex items-center justify-center gap-2 active:scale-95">
+            <button form="job-form" type="submit" className="w-full py-3.5 bg-[#4338ca] text-white rounded-xl font-bold shadow-lg shadow-[#4338ca]/20 hover:bg-[#3730a3] transition-all flex items-center justify-center gap-2 active:scale-95">
               <svg className="w-5 h-5 opacity-70" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" clipRule="evenodd" /></svg>
               Run ATS Pre-Flight Check
             </button>
@@ -217,7 +267,7 @@ const JobModal = ({ isOpen, onClose, onSubmit, templateName }) => {
                   onSubmit(jobData);
                   setTimeout(() => { resetModal(); }, 1500); 
                 }} 
-                className="flex-1 py-3 bg-[#556b2f] text-white rounded-xl font-bold shadow-lg shadow-[#556b2f]/20 hover:bg-[#3e4f22] transition-all text-sm flex items-center justify-center gap-2 active:scale-95"
+                className="flex-1 py-3 bg-[#4338ca] text-white rounded-xl font-bold shadow-lg shadow-[#4338ca]/20 hover:bg-[#3730a3] transition-all text-sm flex items-center justify-center gap-2 active:scale-95"
               >
                 Generate Anyway
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
@@ -229,6 +279,13 @@ const JobModal = ({ isOpen, onClose, onSubmit, templateName }) => {
       </div>
     </div>
   );
+};
+
+JobModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
+  templateName: PropTypes.string,
 };
 
 export default JobModal;
